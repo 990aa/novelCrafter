@@ -1,0 +1,10 @@
+pip
+transformers
+accelerate
+datasets
+sentencepiece
+PyPDF2
+tqdm
+wandb
+torch
+python-dotenv
