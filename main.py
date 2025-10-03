@@ -71,9 +71,109 @@ def clean_and_chunk_text(text, chunk_size=10):
     return chunks
 
 
+
+
+
+# --- Model and Tokenizer Setup ---
+device = "cuda" if torch.cuda.is_available() else "cpu"
+hf_repo = "a-01a/ds-novelCrafter"
+model_name = "deepseek-ai/deepseek-llm-7b"  # fallback
+tokenizer = None
+model = None
+
+# Try to load from HF repo if available (resume training)
+from huggingface_hub import hf_hub_download, list_repo_files
+from transformers import AutoConfig
+
+def hf_model_exists(repo_id):
+    try:
+        files = list_repo_files(repo_id)
+        return any(f.endswith("pytorch_model.bin") or f.endswith("adapter_model.bin") for f in files)
+    except Exception:
+        return False
+
+if hf_model_exists(hf_repo):
+    print(f"Resuming from Hugging Face repo: {hf_repo}")
+    tokenizer = AutoTokenizer.from_pretrained(hf_repo)
+    try:
+        # Try to load as PEFT model
+        model = AutoModelForCausalLM.from_pretrained(hf_repo, trust_remote_code=True)
+        # If adapter weights exist, load as PEFT
+        if os.path.exists(os.path.join(hf_repo, "adapter_config.json")):
+            model = PeftModel.from_pretrained(model, hf_repo)
+        print("Loaded model from Hugging Face repo.")
+    except Exception as e:
+        print(f"Error loading model from HF repo: {e}")
+        # fallback to base
+        model = None
+        tokenizer = None
+
+if tokenizer is None or model is None:
+    try:
+        model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        print("Successfully loaded DeepSeek-R1-Distill-Llama-8B tokenizer")
+    except Exception as e:
+        print(f"Error loading distill model tokenizer: {e}")
+        print("Falling back to deepseek-llm-7b tokenizer")
+        model_name = "deepseek-ai/deepseek-llm-7b"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    print(f"Using model: {model_name}")
+
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            device_map="auto" if device == "cuda" else None,
+            trust_remote_code=True
+        )
+        print(f"Successfully loaded {model_name}")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        print("Falling back to deepseek-llm-7b")
+        model_name = "deepseek-ai/deepseek-llm-7b"
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            device_map="auto" if device == "cuda" else None,
+            trust_remote_code=True
+        )
+
+    model = prepare_model_for_kbit_training(model)
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=32,
+        target_modules=["q_proj", "v_proj"],
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM"
+    )
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
+    model.resize_token_embeddings(len(tokenizer))
+
+data_collator = DataCollatorForLanguageModeling(
+    tokenizer=tokenizer,
+    mlm=False
+)
+
 # --- Incremental Training Setup ---
 import json
 from datasets import Dataset
+
+def tokenize_function(examples):
+    """Tokenize the text chunks"""
+    return tokenizer(
+        examples["text"],
+        truncation=True,
+        padding=False,
+        max_length=1024,
+        return_tensors=None
+    )
 
 chunk_size = 10
 text_chunks = clean_and_chunk_text(book_text, chunk_size=chunk_size)
