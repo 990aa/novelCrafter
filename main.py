@@ -70,10 +70,6 @@ def clean_and_chunk_text(text, chunk_size=10):
     
     return chunks
 
-
-
-
-
 # --- Model and Tokenizer Setup ---
 device = "cuda" if torch.cuda.is_available() else "cpu"
 hf_repo = "a-01a/novelCrafter"
