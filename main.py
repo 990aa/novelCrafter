@@ -107,15 +107,17 @@ if hf_model_exists(hf_repo):
         model = None
         tokenizer = None
 
+#Models 
+
 if tokenizer is None or model is None:
     try:
-        model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+        model_name = "meta-llama/Llama-3.2-3B-Instruct"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        print("Successfully loaded DeepSeek-R1-Distill-Llama-8B tokenizer")
+        print("Successfully loaded Llama-3.2-3B-Instruct tokenizer")
     except Exception as e:
         print(f"Error loading distill model tokenizer: {e}")
-        print("Falling back to deepseek-llm-7b tokenizer")
-        model_name = "deepseek-ai/deepseek-llm-7b"
+        print("Falling back to Llama-3.2-1B-Instruct tokenizer")
+        model_name = "meta-llama/Llama-3.2-1B-Instruct"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     if tokenizer.pad_token is None:
