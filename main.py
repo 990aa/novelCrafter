@@ -135,8 +135,8 @@ if tokenizer is None or model is None:
         print(f"Successfully loaded {model_name}")
     except Exception as e:
         print(f"Error loading model: {e}")
-        print("Falling back to deepseek-llm-7b")
-        model_name = "deepseek-ai/deepseek-llm-7b"
+        print("Falling back to Llama-3.2-1B-Instruct")
+        model_name = "meta-llama/Llama-3.2-1B-Instruct"
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
@@ -243,8 +243,8 @@ for part_idx in range(start_part, num_parts):
     tokenizer.save_pretrained(f"./book_model_part_{part_idx+1}")
 
     # Upload to Hugging Face Hub
-    model.push_to_hub("a-01a/ds-novelCrafter", commit_message=f"Trained on part {part_idx+1}")
-    tokenizer.push_to_hub("a-01a/ds-novelCrafter", commit_message=f"Trained on part {part_idx+1}")
+    model.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
+    tokenizer.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
 
     # Update progress
     with open(progress_file, "w") as f:
