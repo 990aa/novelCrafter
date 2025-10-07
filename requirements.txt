@@ -10,3 +10,4 @@ torch
 python-dotenv
 dotenv
 peft
+huggingface_hub[hf_xet]
