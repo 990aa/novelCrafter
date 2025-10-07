@@ -77,7 +77,6 @@ def clean_and_chunk_text(text, chunk_size=10):
 # --- Model and Tokenizer Setup ---
 device = "cuda" if torch.cuda.is_available() else "cpu"
 hf_repo = "a-01a/novelCrafter"
-model_name = "deepseek-ai/deepseek-llm-7b"  # fallback
 tokenizer = None
 model = None
 
