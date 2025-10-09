@@ -21,7 +21,7 @@ from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig
 from peft.utils import prepare_model_for_kbit_training
 
 if HF_TOKEN:
-    os.system(f"huggingface-cli login --token {HF_TOKEN}")
+    os.system(f"hf auth login --token {HF_TOKEN}")
 else:
     print("HF_TOKEN not found in environment variables.")
 
@@ -124,7 +124,7 @@ if tokenizer is None or model is None:
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            dtype=torch.float16 if device == "cuda" else torch.float32,
             device_map="auto" if device == "cuda" else None,
             trust_remote_code=True
         )
@@ -135,7 +135,7 @@ if tokenizer is None or model is None:
         model_name = "meta-llama/Llama-3.2-1B-Instruct"
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            dtype=torch.float16 if device == "cuda" else torch.float32,
             device_map="auto" if device == "cuda" else None,
             trust_remote_code=True
         )
@@ -229,7 +229,7 @@ for part_idx in range(start_part, num_parts):
         train_dataset=dataset["train"],
         eval_dataset=dataset["test"],
         data_collator=data_collator,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     trainer.train()
