@@ -192,7 +192,9 @@ else:
     start_part = 0
 
 for part_idx in range(start_part, num_parts):
-    print(f"\n--- Training on part {part_idx+1}/{num_parts} ---")
+    print(f"\n{'='*60}")
+    print(f"--- Training on part {part_idx+1}/{num_parts} ---")
+    print(f"{'='*60}")
     part_chunks = parts[part_idx]
     dataset = Dataset.from_dict({"text": part_chunks})
     dataset = dataset.map(tokenize_function, batched=True)
