@@ -22,13 +22,15 @@ from peft.utils import prepare_model_for_kbit_training
 
 if HF_TOKEN:
     os.system(f"hf auth login --token {HF_TOKEN}")
+    print("✅ Logged in to Hugging Face")
 else:
-    print("HF_TOKEN not found in environment variables.")
+    print("⚠️ HF_TOKEN not found in environment variables.")
 
 if WANDB_API_KEY:
     wandb.login(key=WANDB_API_KEY)
+    print("✅ Logged in to WandB")
 else:
-    print("WANDB_API_KEY not found in environment variables.")
+    print("⚠️ WANDB_API_KEY not found in environment variables.")
 
 # ------------------- SETUP COMPLETE -------------------
 
@@ -45,7 +47,8 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 book_text = extract_text_from_pdf("input/The_crocodile.pdf")
-print(f"Extracted text length: {len(book_text)} characters")
+print(f"✅ Extracted text length: {len(book_text)} characters")
+print("="*60)
 
 # ------------------- DATA PREPARATION -------------------
 
@@ -71,7 +74,11 @@ def clean_and_chunk_text(text, chunk_size=10):
     return chunks
 
 # --- Model and Tokenizer Setup ---
+print("\n" + "="*60)
+print("MODEL SETUP")
+print("="*60)
 device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Device: {device}")
 hf_repo = "a-01a/novelCrafter"
 tokenizer = None
 model = None
@@ -174,7 +181,9 @@ def tokenize_function(examples):
 
 chunk_size = 10
 text_chunks = clean_and_chunk_text(book_text, chunk_size=chunk_size)
-print(f"Created {len(text_chunks)} training chunks")
+print(f"\n{'='*60}")
+print(f"✅ Created {len(text_chunks)} training chunks")
+print(f"{'='*60}")
 
 def split_list(lst, n):
     k, m = divmod(len(lst), n)
@@ -202,6 +211,17 @@ for part_idx in range(start_part, num_parts):
 
     print(f"Training samples: {len(dataset['train'])}")
     print(f"Test samples: {len(dataset['test'])}")
+    
+    # Adjust steps based on dataset size
+    train_size = len(dataset['train'])
+    # Calculate steps per epoch
+    steps_per_epoch = max(1, train_size // (1 * 8))  # batch_size * gradient_accumulation_steps
+    # Set reasonable save/eval steps
+    save_steps = max(10, steps_per_epoch // 2)
+    eval_steps = max(10, steps_per_epoch // 2)
+    
+    print(f"Steps per epoch: ~{steps_per_epoch}")
+    print(f"Save/Eval every {save_steps} steps")
 
     training_args = TrainingArguments(
         output_dir=f"./book_model_part_{part_idx+1}",
@@ -210,12 +230,12 @@ for part_idx in range(start_part, num_parts):
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=8,
-        warmup_steps=100,
-        logging_steps=50,
-        save_steps=500,
-        eval_steps=500,
+        warmup_steps=min(100, steps_per_epoch),
+        logging_steps=max(1, steps_per_epoch // 4),
+        save_steps=save_steps,
+        eval_steps=eval_steps,
         eval_strategy="steps",
-        load_best_model_at_end=True,
+        load_best_model_at_end=False,  # Disable to avoid issues with small datasets
         fp16=torch.cuda.is_available(),
         learning_rate=5e-5,
         weight_decay=0.01,
@@ -226,6 +246,7 @@ for part_idx in range(start_part, num_parts):
         dataloader_pin_memory=False,  # Fix the pin_memory warning on CPU
         use_cpu=not torch.cuda.is_available(),  # Explicitly use CPU if no CUDA
         no_cuda=not torch.cuda.is_available(),  # Disable CUDA if not available
+        disable_tqdm=False,  # Keep progress bars enabled
     )
 
     trainer = Trainer(
