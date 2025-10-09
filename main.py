@@ -219,8 +219,11 @@ for part_idx in range(start_part, num_parts):
         weight_decay=0.01,
         save_total_limit=2,
         prediction_loss_only=False,
-        report_to=["none"],
+        report_to=["wandb"] if WANDB_API_KEY else ["none"],
         logging_dir=f"./logs_part_{part_idx+1}",
+        dataloader_pin_memory=False,  # Fix the pin_memory warning on CPU
+        use_cpu=not torch.cuda.is_available(),  # Explicitly use CPU if no CUDA
+        no_cuda=not torch.cuda.is_available(),  # Disable CUDA if not available
     )
 
     trainer = Trainer(
@@ -232,25 +235,52 @@ for part_idx in range(start_part, num_parts):
         processing_class=tokenizer,
     )
 
-    trainer.train()
+    print(f"Starting training for part {part_idx+1}...")
+    print(f"Device: {device}")
+    print(f"Model device: {next(model.parameters()).device}")
+    
+    try:
+        trainer.train()
+        print(f"✅ Training completed for part {part_idx+1}")
+    except Exception as e:
+        print(f"❌ Training failed for part {part_idx+1}: {e}")
+        import traceback
+        traceback.print_exc()
+        break
 
     # Save model and tokenizer
+    print(f"Saving model for part {part_idx+1}...")
     trainer.save_model()
     tokenizer.save_pretrained(f"./book_model_part_{part_idx+1}")
+    print(f"✅ Model saved locally")
 
     # Upload to Hugging Face Hub
-    model.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
-    tokenizer.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
+    try:
+        print(f"Uploading to Hugging Face Hub...")
+        model.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
+        tokenizer.push_to_hub("a-01a/novelCrafter", commit_message=f"Trained on part {part_idx+1}")
+        print(f"✅ Model uploaded to HuggingFace")
+    except Exception as e:
+        print(f"⚠️ Failed to upload to HuggingFace: {e}")
+        print("Continuing with local training...")
 
     # Update progress
     with open(progress_file, "w") as f:
         json.dump({"last_completed_part": part_idx+1}, f)
+    print(f"Progress saved: {part_idx+1}/{num_parts} parts completed")
 
     # Ask user if should continue
-    user_input = input(f"Continue to next part? (y/n): ").strip().lower()
-    if user_input != "y":
-        print("Training stopped by user. Model saved and uploaded.")
-        break
+    if part_idx < num_parts - 1:  # Don't ask on the last part
+        print(f"\n{'='*60}")
+        user_input = input(f"Continue to next part? (y/n): ").strip().lower()
+        if user_input != "y":
+            print("Training stopped by user. Model saved and uploaded.")
+            break
+    else:
+        print(f"✅ All {num_parts} parts completed!")
 
+print("\n{'='*60}")
 print("✅ Incremental training complete!")
+print(f"Final model saved in: ./book_model_part_{part_idx+1}")
+print("="*60)
 
