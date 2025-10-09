@@ -4,3 +4,4 @@ __pycache__/
 input/
 log
 log2
+wandb/
