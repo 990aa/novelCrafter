@@ -113,41 +113,67 @@ if hf_model_exists(hf_repo):
 #Models 
 
 if tokenizer is None or model is None:
-    try:
+    # Choose model based on device - 3B is too large for CPU training
+    if device == "cuda":
         model_name = "meta-llama/Llama-3.2-3B-Instruct"
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        print("Successfully loaded Llama-3.2-3B-Instruct tokenizer")
-    except Exception as e:
-        print(f"Error loading distill model tokenizer: {e}")
-        print("Falling back to Llama-3.2-1B-Instruct tokenizer")
+        print("Using CUDA - attempting to load 3B model")
+    else:
         model_name = "meta-llama/Llama-3.2-1B-Instruct"
+        print("⚠️ Running on CPU - using smaller 1B model for better performance")
+    
+    try:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
+        print(f"✅ Successfully loaded {model_name} tokenizer")
+    except Exception as e:
+        print(f"❌ Error loading tokenizer: {e}")
+        if "3B" in model_name:
+            print("Falling back to Llama-3.2-1B-Instruct tokenizer")
+            model_name = "meta-llama/Llama-3.2-1B-Instruct"
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    print(f"Using model: {model_name}")
+    print(f"Loading model: {model_name}...")
 
     try:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            dtype=torch.float16 if device == "cuda" else torch.float32,
-            device_map="auto" if device == "cuda" else None,
-            trust_remote_code=True
-        )
-        print(f"Successfully loaded {model_name}")
+        # Optimize loading for CPU
+        load_kwargs = {
+            "trust_remote_code": True,
+        }
+        
+        if device == "cuda":
+            load_kwargs["dtype"] = torch.float16
+            load_kwargs["device_map"] = "auto"
+        else:
+            # CPU-specific optimizations
+            load_kwargs["dtype"] = torch.float32
+            load_kwargs["low_cpu_mem_usage"] = True
+            print("Using CPU optimizations: low_cpu_mem_usage=True")
+        
+        model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+        print(f"✅ Successfully loaded {model_name}")
     except Exception as e:
-        print(f"Error loading model: {e}")
-        print("Falling back to Llama-3.2-1B-Instruct")
-        model_name = "meta-llama/Llama-3.2-1B-Instruct"
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            dtype=torch.float16 if device == "cuda" else torch.float32,
-            device_map="auto" if device == "cuda" else None,
-            trust_remote_code=True
-        )
+        print(f"❌ Error loading model: {e}")
+        if "3B" in model_name:
+            print("Falling back to Llama-3.2-1B-Instruct")
+            model_name = "meta-llama/Llama-3.2-1B-Instruct"
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            
+            load_kwargs_fallback = {
+                "trust_remote_code": True,
+                "dtype": torch.float32,
+                "low_cpu_mem_usage": True
+            }
+            model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs_fallback)
+            print(f"✅ Successfully loaded {model_name}")
+        else:
+            raise
 
     model = prepare_model_for_kbit_training(model)
+    print("Preparing LoRA configuration...")
     lora_config = LoraConfig(
         r=8,
         lora_alpha=32,
@@ -156,9 +182,13 @@ if tokenizer is None or model is None:
         bias="none",
         task_type="CAUSAL_LM"
     )
+    print("Applying LoRA to model...")
     model = get_peft_model(model, lora_config)
+    print("\n" + "="*60)
     model.print_trainable_parameters()
+    print("="*60)
     model.resize_token_embeddings(len(tokenizer))
+    print(f"✅ Model setup complete!\n")
 
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer,
