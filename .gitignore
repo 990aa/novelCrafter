@@ -111,13 +111,11 @@ transformers_cache/
 !input/.gitkeep
 
 
-input/
 CHANGELOG.md
 CONTRIBUTING.md
 FAQ.md 
 README.md
 USAGE.md
 QUICKSTART.md
-MODEL_CARD.md
 EXAMPLES.md
 DOCS_INDEX.md
