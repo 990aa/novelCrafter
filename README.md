@@ -57,6 +57,7 @@
    ```env
    HF_TOKEN=your_huggingface_token_here
    WANDB_API_KEY=your_wandb_api_key_here  # Optional
+   BOOK_PDF=your_book.pdf  # The PDF filename in input/ folder
    ```
    
    Get your tokens:
@@ -71,9 +72,9 @@
    └── your_book.pdf
    ```
 
-2. **Update the PDF path** in `main.py` (line 48):
-   ```python
-   book_text = extract_text_from_pdf("input/your_book.pdf")
+2. **Update the .env file** with your PDF filename:
+   ```env
+   BOOK_PDF=your_book.pdf
    ```
 
 3. **Run the training script**
