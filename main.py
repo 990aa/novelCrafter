@@ -275,7 +275,6 @@ for part_idx in range(start_part, num_parts):
         logging_dir=f"./logs_part_{part_idx+1}",
         dataloader_pin_memory=False,  # Fix the pin_memory warning on CPU
         use_cpu=not torch.cuda.is_available(),  # Explicitly use CPU if no CUDA
-        no_cuda=not torch.cuda.is_available(),  # Disable CUDA if not available
         disable_tqdm=False,  # Keep progress bars enabled
     )
 
