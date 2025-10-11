@@ -110,6 +110,7 @@ transformers_cache/
 !input/README.md
 !input/.gitkeep
 PROGRESS.md
+TRAINING_LOGIC.md
 
 CONTRIBUTING.md
 FAQ.md 
