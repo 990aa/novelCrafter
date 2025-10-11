@@ -109,7 +109,7 @@ transformers_cache/
 # Don't ignore example files
 !input/README.md
 !input/.gitkeep
-
+PROGRESS.md
 
 CONTRIBUTING.md
 FAQ.md 
