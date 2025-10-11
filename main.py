@@ -251,8 +251,12 @@ if os.path.exists(progress_file):
     with open(progress_file, "r") as f:
         progress = json.load(f)
     start_part = progress.get("last_completed_part", 0)
+    print(f"📂 Found existing progress: Resuming from part {start_part + 1}/{num_parts}")
 else:
     start_part = 0
+    print(f"🆕 Starting fresh training from part 1/{num_parts}")
+
+last_completed_part = start_part  # Track the last completed part
 
 for part_idx in range(start_part, num_parts):
     print(f"\n{'='*60}")
@@ -369,6 +373,9 @@ for part_idx in range(start_part, num_parts):
     with open(progress_file, "w") as f:
         json.dump({"last_completed_part": part_idx+1}, f)
     print(f"Progress saved: {part_idx+1}/{num_parts} parts completed")
+    
+    # Update last completed part tracker
+    last_completed_part = part_idx + 1
 
     # Ask user if should continue
     if part_idx < num_parts - 1:  # Don't ask on the last part
@@ -380,8 +387,8 @@ for part_idx in range(start_part, num_parts):
     else:
         print(f"✅ All {num_parts} parts completed!")
 
-print("\n{'='*60}")
+print("\n" + "="*60)
 print("✅ Incremental training complete!")
-print(f"Final model saved in: ./book_model_part_{part_idx+1}")
+print(f"Final model saved in: ./book_model_part_{last_completed_part}")
 print("="*60)
 
