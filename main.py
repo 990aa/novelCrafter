@@ -247,14 +247,32 @@ num_parts = 10
 parts = split_list(text_chunks, num_parts)
 
 progress_file = "train_progress.json"
+current_book_hash = hash(BOOK_PDF)  # Simple hash to identify book changes
+
 if os.path.exists(progress_file):
     with open(progress_file, "r") as f:
         progress = json.load(f)
-    start_part = progress.get("last_completed_part", 0)
-    print(f"📂 Found existing progress: Resuming from part {start_part + 1}/{num_parts}")
+    
+    # Check if we're training on the same book
+    saved_book_hash = progress.get("book_hash", None)
+    
+    if saved_book_hash == current_book_hash:
+        # Same book - resume from where we left off
+        start_part = progress.get("last_completed_part", 0)
+        print(f"📂 Resuming training on '{BOOK_PDF}'")
+        print(f"   Continuing from part {start_part + 1}/{num_parts}")
+    else:
+        # Different book - start fresh but model continues from last trained state
+        start_part = 0
+        old_book = progress.get("book_name", "previous book")
+        print(f"📚 Switching books!")
+        print(f"   Previous: {old_book}")
+        print(f"   Current: {BOOK_PDF}")
+        print(f"   Starting fresh training from part 1/{num_parts}")
+        print(f"   ✅ Model will continue learning on top of previous training")
 else:
     start_part = 0
-    print(f"🆕 Starting fresh training from part 1/{num_parts}")
+    print(f"🆕 Starting fresh training on '{BOOK_PDF}' from part 1/{num_parts}")
 
 last_completed_part = start_part  # Track the last completed part
 
@@ -370,8 +388,15 @@ for part_idx in range(start_part, num_parts):
         print("Continuing with local training...")
 
     # Update progress
+    progress_data = {
+        "last_completed_part": part_idx + 1,
+        "book_name": BOOK_PDF,
+        "book_hash": current_book_hash,
+        "total_parts": num_parts,
+        "timestamp": str(torch.cuda.Event(enable_timing=False))  # Just for reference
+    }
     with open(progress_file, "w") as f:
-        json.dump({"last_completed_part": part_idx+1}, f)
+        json.dump(progress_data, f, indent=2)
     print(f"Progress saved: {part_idx+1}/{num_parts} parts completed")
     
     # Update last completed part tracker
