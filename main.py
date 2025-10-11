@@ -6,6 +6,7 @@ load_dotenv()
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 WANDB_API_KEY = os.getenv("WANDB_API_KEY")
+BOOK_PDF = os.getenv("BOOK_PDF")
 
 import torch
 import wandb
@@ -32,6 +33,11 @@ if WANDB_API_KEY:
 else:
     print("⚠️ WANDB_API_KEY not found in environment variables.")
 
+if not BOOK_PDF:
+    print("❌ BOOK_PDF not found in environment variables!")
+    print("Please add BOOK_PDF=your_book.pdf to your .env file")
+    exit(1)
+
 # ------------------- SETUP COMPLETE -------------------
 
 def extract_text_from_pdf(pdf_path):
@@ -43,11 +49,29 @@ def extract_text_from_pdf(pdf_path):
             for page in reader.pages:
                 text += page.extract_text()
     except Exception as e:
-        print(f"Error reading PDF: {e}")
+        print(f"❌ Error reading PDF: {e}")
+        exit(1)
     return text
 
-book_text = extract_text_from_pdf("input/The_crocodile.pdf")
+# Construct PDF path from environment variable
+pdf_path = os.path.join("input", BOOK_PDF)
+print(f"📖 Reading book: {BOOK_PDF}")
+print(f"   Path: {pdf_path}")
+
+if not os.path.exists(pdf_path):
+    print(f"❌ PDF file not found: {pdf_path}")
+    print(f"   Please make sure '{BOOK_PDF}' exists in the input/ folder")
+    exit(1)
+
+book_text = extract_text_from_pdf(pdf_path)
 print(f"✅ Extracted text length: {len(book_text)} characters")
+
+# Show preview of extracted text
+preview_length = 150
+print(f"\n📄 Text Preview (first {preview_length} chars):")
+print("-" * 60)
+print(book_text[:preview_length].strip() + "...")
+print("-" * 60)
 print("="*60)
 
 # ------------------- DATA PREPARATION -------------------
@@ -235,11 +259,36 @@ for part_idx in range(start_part, num_parts):
     print(f"--- Training on part {part_idx+1}/{num_parts} ---")
     print(f"{'='*60}")
     part_chunks = parts[part_idx]
+    
+    # Show sample from this part to confirm progress
+    print(f"\n📊 Part {part_idx+1} Data Sample:")
+    print("-" * 60)
+    if len(part_chunks) > 0:
+        first_chunk = part_chunks[0]
+        last_chunk = part_chunks[-1]
+        
+        # Show first 100 words of first chunk
+        first_words = ' '.join(first_chunk.split()[:100])
+        print(f"🔹 First ~100 words of part {part_idx+1}:")
+        print(f"   {first_words}...")
+        
+        # Show last 100 words of last chunk if there are multiple chunks
+        if len(part_chunks) > 1:
+            last_words = ' '.join(last_chunk.split()[-100:])
+            print(f"\n🔹 Last ~100 words of part {part_idx+1}:")
+            print(f"   ...{last_words}")
+        
+        print(f"\n📈 Part {part_idx+1} Statistics:")
+        print(f"   Total chunks: {len(part_chunks)}")
+        print(f"   Total characters: {sum(len(chunk) for chunk in part_chunks):,}")
+        print(f"   Average chunk length: {sum(len(chunk) for chunk in part_chunks) // len(part_chunks):,} chars")
+    print("-" * 60)
+    
     dataset = Dataset.from_dict({"text": part_chunks})
     dataset = dataset.map(tokenize_function, batched=True)
     dataset = dataset.train_test_split(test_size=0.1)
 
-    print(f"Training samples: {len(dataset['train'])}")
+    print(f"\nTraining samples: {len(dataset['train'])}")
     print(f"Test samples: {len(dataset['test'])}")
     
     # Adjust steps based on dataset size
