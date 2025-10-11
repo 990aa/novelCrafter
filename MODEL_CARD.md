@@ -1,3 +1,35 @@
+---
+language:
+- en
+license: llama3.2
+library_name: transformers
+base_model: meta-llama/Llama-3.2-1B-Instruct
+tags:
+- text-generation
+- llm
+- lora
+- peft
+- fine-tuned
+- creative-writing
+- literature
+- novel
+- storytelling
+- incremental-training
+pipeline_tag: text-generation
+widget:
+- text: "Once upon a time, in a distant land,"
+  example_title: "Story Beginning"
+- text: "Chapter 1: The Beginning\n\n"
+  example_title: "Chapter Start"
+- text: "The old house stood at the edge of the forest,"
+  example_title: "Scene Setting"
+model-index:
+- name: NovelCrafter
+  results: []
+datasets: []
+metrics: []
+---
+
 # Model Card: NovelCrafter Fine-Tuned Model
 
 ## Model Details
@@ -173,7 +205,7 @@ Note: Specific metrics depend on the training run and can be viewed in WandB log
 - **Compute Region**: User-dependent
 - **Carbon Emitted**: Varies by location and power source
 
-We encourage users to:
+I encourage users to:
 - Use energy-efficient hardware when possible
 - Train during off-peak hours
 - Consider renewable energy sources
