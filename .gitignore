@@ -112,7 +112,6 @@ transformers_cache/
 
 
 input/
-.env.example
 CHANGELOG.md
 CONTRIBUTING.md
 FAQ.md 
